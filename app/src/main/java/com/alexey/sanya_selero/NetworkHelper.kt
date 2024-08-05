@@ -23,6 +23,8 @@ class NetworkHelper(private val serverUrl: String) {
                     .post(body)
                     .build()
 
+                Log.d("NetworkHelper", "Sending JSON to server: ${jsonFilePath.readText()}")
+
                 client.newCall(request).enqueue(object : Callback {
                     override fun onFailure(call: Call, e: IOException) {
                         Log.e("NetworkHelper", "Error sending JSON to server", e)
@@ -30,7 +32,7 @@ class NetworkHelper(private val serverUrl: String) {
                     }
 
                     override fun onResponse(call: Call, response: Response) {
-                        response.use { // Auto-closes the response body
+                        response.use {
                             if (response.isSuccessful) {
                                 val responseBody = response.body?.string()
                                 if (responseBody.isNullOrEmpty()) {

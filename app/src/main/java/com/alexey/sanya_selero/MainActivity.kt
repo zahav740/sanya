@@ -105,7 +105,8 @@ class MainActivity : AppCompatActivity(), SRecognitionManager.RecognitionCallbac
             thread {
                 try {
                     val json = JSONObject().apply {
-                        put("text", text)
+                        put("text", text) // Убедитесь, что структура соответствует ожиданиям сервера
+                        put("source", "smartphone") // Добавляем источник, если это требуется сервером
                     }
                     FileWriter(jsonFilePath).use { it.write(json.toString()) }
                     Log.d("JsonHelper", "Saved to JSON: ${json.toString()}")
@@ -129,10 +130,11 @@ class MainActivity : AppCompatActivity(), SRecognitionManager.RecognitionCallbac
 
     private fun handleServerError(e: Exception) {
         Log.e("MainActivity", "Error sending JSON to server", e)
+        Toast.makeText(this, "Ошибка отправки на сервер: ${e.message}", Toast.LENGTH_SHORT).show()
     }
 
     private fun playResponse(responseText: String) {
-        tts.speak(responseText, TextToSpeech.QUEUE_FLUSH, null, null)
+        tts.speak(responseText, TextToSpeech.QUEUE_FLUSH, null, "UtteranceId")
         tts.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) {}
 
