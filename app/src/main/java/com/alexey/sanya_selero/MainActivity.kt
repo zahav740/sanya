@@ -3,7 +3,6 @@ package com.alexey.sanya_selero
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.speech.tts.TextToSpeech
 import android.util.Log
 import android.widget.TextView
 import android.widget.Toast
@@ -23,7 +22,7 @@ class MainActivity : AppCompatActivity(), SRecognitionManager.RecognitionCallbac
     private lateinit var transcriptionTextView: TextView
     private lateinit var recognitionManager: SRecognitionManager
     private lateinit var jsonFilePath: File
-    private lateinit var tts: TextToSpeech
+    private lateinit var voiceController: VoiceController
     private val serverUrl = "http://192.168.1.156:3000/processVoice"
     private val networkHelper = NetworkHelper(serverUrl)
 
@@ -38,13 +37,12 @@ class MainActivity : AppCompatActivity(), SRecognitionManager.RecognitionCallbac
         jsonFilePath = File(getExternalFilesDir(null), "text.json")
         Log.d("MainActivity", "JSON file path: ${jsonFilePath.absolutePath}")
 
-        tts = TextToSpeech(this) { status ->
-            if (status == TextToSpeech.SUCCESS) {
-                tts.language = Locale("ru")
-            } else {
-                Log.e("MainActivity", "TTS Initialization failed")
-            }
-        }
+        // Инициализация VoiceController
+        voiceController = VoiceController(this)
+
+        // Настройка параметров голоса
+        voiceController.setVoicePitch(1.2f) // Высота голоса
+        voiceController.setVoiceSpeed(1.3f) // Скорость речи
 
         requestPermissions()
     }
@@ -136,17 +134,15 @@ class MainActivity : AppCompatActivity(), SRecognitionManager.RecognitionCallbac
     }
 
     private fun playResponse(responseText: String) {
-        tts.speak(responseText, TextToSpeech.QUEUE_FLUSH, null, "UtteranceId")
-        tts.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
-            override fun onStart(utteranceId: String?) {}
-
-            override fun onDone(utteranceId: String?) {
+        voiceController.speak(responseText)
+        voiceController.setOnSpeechCompleteListener(object : VoiceController.SpeechCompleteListener {
+            override fun onSpeechComplete() {
                 runOnUiThread {
                     recognitionManager.startListeningForTrigger() // Возвращаемся к ожиданию триггерного слова
                 }
             }
 
-            override fun onError(utteranceId: String?) {
+            override fun onError() {
                 runOnUiThread {
                     recognitionManager.startListeningForTrigger() // Возвращаемся к ожиданию триггерного слова
                 }
@@ -157,7 +153,7 @@ class MainActivity : AppCompatActivity(), SRecognitionManager.RecognitionCallbac
     override fun onDestroy() {
         super.onDestroy()
         recognitionManager.destroy()
-        tts.shutdown()
+        voiceController.shutdown()
         Log.i("MainActivity", "MainActivity завершил работу без ошибок.")
     }
 
