@@ -10,9 +10,10 @@ import java.io.IOException
 import kotlin.concurrent.thread
 
 class NetworkHelper(private val serverUrl: String) {
+
     private val client = OkHttpClient()
 
-    fun sendJsonToServer(jsonFilePath: File, onResponseReceived: (String) -> Unit) {
+    fun sendJsonToServer(jsonFilePath: File, onResponse: (String) -> Unit, onError: (Exception) -> Unit) {
         thread {
             try {
                 val body = jsonFilePath.asRequestBody("application/json; charset=utf-8".toMediaType())
@@ -24,6 +25,7 @@ class NetworkHelper(private val serverUrl: String) {
                 client.newCall(request).enqueue(object : Callback {
                     override fun onFailure(call: Call, e: IOException) {
                         Log.e("NetworkHelper", "Error sending JSON to server", e)
+                        onError(e)
                     }
 
                     override fun onResponse(call: Call, response: Response) {
@@ -31,14 +33,16 @@ class NetworkHelper(private val serverUrl: String) {
                             val responseJson = JSONObject(response.body?.string() ?: "")
                             val responseText = responseJson.getString("response")
                             Log.d("NetworkHelper", "Received response from server: $responseText")
-                            onResponseReceived(responseText)
+                            onResponse(responseText)
                         } else {
                             Log.e("NetworkHelper", "Server error: ${response.code}")
+                            onError(IOException("Server error: ${response.code}"))
                         }
                     }
                 })
             } catch (e: Exception) {
                 Log.e("NetworkHelper", "Error sending JSON to server", e)
+                onError(e)
             }
         }
     }

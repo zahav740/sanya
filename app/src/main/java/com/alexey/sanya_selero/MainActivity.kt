@@ -24,8 +24,8 @@ class MainActivity : AppCompatActivity(), SRecognitionManager.RecognitionCallbac
     private lateinit var recognitionManager: SRecognitionManager
     private lateinit var jsonFilePath: File
     private lateinit var tts: TextToSpeech
-    private lateinit var networkHelper: NetworkHelper
-    private val serverUrl = "http://localhost:3000/processVoice"
+    private val serverUrl = "http://192.168.1.156:3000/processVoice"
+    private val networkHelper = NetworkHelper(serverUrl)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,6 +34,7 @@ class MainActivity : AppCompatActivity(), SRecognitionManager.RecognitionCallbac
         transcriptionTextView = findViewById(R.id.transcriptionTextView)
         recognitionManager = SRecognitionManager(this, this)
 
+        // Инициализация пути к файлу в onCreate()
         jsonFilePath = File(getExternalFilesDir(null), "text.json")
         Log.d("MainActivity", "JSON file path: ${jsonFilePath.absolutePath}")
 
@@ -45,7 +46,6 @@ class MainActivity : AppCompatActivity(), SRecognitionManager.RecognitionCallbac
             }
         }
 
-        networkHelper = NetworkHelper(serverUrl) // Инициализация NetworkHelper
         requestPermissions()
     }
 
@@ -60,7 +60,7 @@ class MainActivity : AppCompatActivity(), SRecognitionManager.RecognitionCallbac
         if (permissions.isNotEmpty()) {
             ActivityCompat.requestPermissions(this, permissions.toTypedArray(), 1)
         } else {
-            recognitionManager.startListeningForTrigger()
+            recognitionManager.startListeningForTrigger() // Начинаем слушать триггерное слово
         }
     }
 
@@ -87,15 +87,11 @@ class MainActivity : AppCompatActivity(), SRecognitionManager.RecognitionCallbac
     override fun onResults(results: String) {
         if (results.contains("Саня", ignoreCase = true)) {
             Toast.makeText(this, "Триггер обнаружен!", Toast.LENGTH_SHORT).show()
-            recognitionManager.startListeningForSpeech()
+            recognitionManager.startListeningForSpeech() // Начинаем распознавание речи
         } else {
             transcriptionTextView.text = results
             appendTextToJson(results)
-            networkHelper.sendJsonToServer(jsonFilePath) { responseText ->
-                runOnUiThread {
-                    playResponse(responseText)
-                }
-            }
+            networkHelper.sendJsonToServer(jsonFilePath, ::handleServerResponse, ::handleServerError)
         }
     }
 
@@ -124,6 +120,17 @@ class MainActivity : AppCompatActivity(), SRecognitionManager.RecognitionCallbac
         }
     }
 
+    private fun handleServerResponse(responseText: String) {
+        Log.d("MainActivity", "Received response from server: $responseText")
+        runOnUiThread {
+            playResponse(responseText)
+        }
+    }
+
+    private fun handleServerError(e: Exception) {
+        Log.e("MainActivity", "Error sending JSON to server", e)
+    }
+
     private fun playResponse(responseText: String) {
         tts.speak(responseText, TextToSpeech.QUEUE_FLUSH, null, null)
         tts.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
@@ -131,13 +138,13 @@ class MainActivity : AppCompatActivity(), SRecognitionManager.RecognitionCallbac
 
             override fun onDone(utteranceId: String?) {
                 runOnUiThread {
-                    recognitionManager.startListeningForTrigger()
+                    recognitionManager.startListeningForTrigger() // Возвращаемся к ожиданию триггерного слова
                 }
             }
 
             override fun onError(utteranceId: String?) {
                 runOnUiThread {
-                    recognitionManager.startListeningForTrigger()
+                    recognitionManager.startListeningForTrigger() // Возвращаемся к ожиданию триггерного слова
                 }
             }
         })
