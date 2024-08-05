@@ -4,6 +4,7 @@ import android.util.Log
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.asRequestBody
+import org.json.JSONException
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
@@ -29,14 +30,27 @@ class NetworkHelper(private val serverUrl: String) {
                     }
 
                     override fun onResponse(call: Call, response: Response) {
-                        if (response.isSuccessful) {
-                            val responseJson = JSONObject(response.body?.string() ?: "")
-                            val responseText = responseJson.getString("response")
-                            Log.d("NetworkHelper", "Received response from server: $responseText")
-                            onResponse(responseText)
-                        } else {
-                            Log.e("NetworkHelper", "Server error: ${response.code}")
-                            onError(IOException("Server error: ${response.code}"))
+                        response.use { // Auto-closes the response body
+                            if (response.isSuccessful) {
+                                val responseBody = response.body?.string()
+                                if (responseBody.isNullOrEmpty()) {
+                                    Log.e("NetworkHelper", "Empty response body")
+                                    onError(IOException("Empty response body"))
+                                    return
+                                }
+                                try {
+                                    val responseJson = JSONObject(responseBody)
+                                    val responseText = responseJson.optString("response", "Нет ответа")
+                                    Log.d("NetworkHelper", "Received response from server: $responseText")
+                                    onResponse(responseText)
+                                } catch (e: JSONException) {
+                                    Log.e("NetworkHelper", "JSON parsing error", e)
+                                    onError(e)
+                                }
+                            } else {
+                                Log.e("NetworkHelper", "Server error: ${response.code}")
+                                onError(IOException("Server error: ${response.code}"))
+                            }
                         }
                     }
                 })
