@@ -11,9 +11,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.audiorecorder.R
-import okhttp3.*
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.File
 import java.io.FileWriter
@@ -25,10 +22,10 @@ class MainActivity : AppCompatActivity(), SRecognitionManager.RecognitionCallbac
 
     private lateinit var transcriptionTextView: TextView
     private lateinit var recognitionManager: SRecognitionManager
-    private lateinit var jsonFilePath: File // Используем lateinit для отложенной инициализации
+    private lateinit var jsonFilePath: File
     private lateinit var tts: TextToSpeech
+    private lateinit var networkHelper: NetworkHelper
     private val serverUrl = "http://localhost:3000/processVoice"
-    private val client = OkHttpClient()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,7 +34,6 @@ class MainActivity : AppCompatActivity(), SRecognitionManager.RecognitionCallbac
         transcriptionTextView = findViewById(R.id.transcriptionTextView)
         recognitionManager = SRecognitionManager(this, this)
 
-        // Инициализация пути к файлу в onCreate()
         jsonFilePath = File(getExternalFilesDir(null), "text.json")
         Log.d("MainActivity", "JSON file path: ${jsonFilePath.absolutePath}")
 
@@ -49,6 +45,7 @@ class MainActivity : AppCompatActivity(), SRecognitionManager.RecognitionCallbac
             }
         }
 
+        networkHelper = NetworkHelper(serverUrl) // Инициализация NetworkHelper
         requestPermissions()
     }
 
@@ -63,7 +60,7 @@ class MainActivity : AppCompatActivity(), SRecognitionManager.RecognitionCallbac
         if (permissions.isNotEmpty()) {
             ActivityCompat.requestPermissions(this, permissions.toTypedArray(), 1)
         } else {
-            recognitionManager.startListeningForTrigger() // Начинаем слушать триггерное слово
+            recognitionManager.startListeningForTrigger()
         }
     }
 
@@ -90,10 +87,15 @@ class MainActivity : AppCompatActivity(), SRecognitionManager.RecognitionCallbac
     override fun onResults(results: String) {
         if (results.contains("Саня", ignoreCase = true)) {
             Toast.makeText(this, "Триггер обнаружен!", Toast.LENGTH_SHORT).show()
-            recognitionManager.startListeningForSpeech() // Начинаем распознавание речи
+            recognitionManager.startListeningForSpeech()
         } else {
             transcriptionTextView.text = results
             appendTextToJson(results)
+            networkHelper.sendJsonToServer(jsonFilePath) { responseText ->
+                runOnUiThread {
+                    playResponse(responseText)
+                }
+            }
         }
     }
 
@@ -103,53 +105,22 @@ class MainActivity : AppCompatActivity(), SRecognitionManager.RecognitionCallbac
     }
 
     private fun appendTextToJson(text: String) {
-        thread {
-            try {
-                val json = JSONObject().apply {
-                    put("text", text)
+        if (text.isNotBlank()) {
+            thread {
+                try {
+                    val json = JSONObject().apply {
+                        put("text", text)
+                    }
+                    FileWriter(jsonFilePath).use { it.write(json.toString()) }
+                    Log.d("JsonHelper", "Saved to JSON: ${json.toString()}")
+                } catch (e: IOException) {
+                    Log.e("JsonHelper", "Error writing to JSON", e)
+                } catch (e: Exception) {
+                    Log.e("JsonHelper", "Unexpected error", e)
                 }
-                FileWriter(jsonFilePath).use { it.write(json.toString()) }
-                Log.d("JsonHelper", "Saved to JSON: ${json.toString()}")
-            } catch (e: IOException) {
-                Log.e("JsonHelper", "Error writing to JSON", e)
-            } catch (e: Exception) {
-                Log.e("JsonHelper", "Unexpected error", e)
             }
-        }
-    }
-
-    private fun sendJsonToServer() {
-        thread {
-            try {
-                val json = jsonFilePath.readText()
-                Log.d("MainActivity", "Sending JSON to server: $json")
-                val body = json.toRequestBody("application/json; charset=utf-8".toMediaType())
-                val request = Request.Builder()
-                    .url(serverUrl)
-                    .post(body)
-                    .build()
-
-                client.newCall(request).enqueue(object : Callback {
-                    override fun onFailure(call: Call, e: IOException) {
-                        Log.e("MainActivity", "Error sending JSON to server", e)
-                    }
-
-                    override fun onResponse(call: Call, response: Response) {
-                        if (response.isSuccessful) {
-                            val responseJson = JSONObject(response.body?.string() ?: "")
-                            val responseText = responseJson.getString("response")
-                            Log.d("MainActivity", "Received response from server: $responseText")
-                            runOnUiThread {
-                                playResponse(responseText)
-                            }
-                        } else {
-                            Log.e("MainActivity", "Server error: ${response.code}")
-                        }
-                    }
-                })
-            } catch (e: Exception) {
-                Log.e("MainActivity", "Error sending JSON to server", e)
-            }
+        } else {
+            Log.d("JsonHelper", "Empty text, not saving to JSON")
         }
     }
 
@@ -160,13 +131,13 @@ class MainActivity : AppCompatActivity(), SRecognitionManager.RecognitionCallbac
 
             override fun onDone(utteranceId: String?) {
                 runOnUiThread {
-                    recognitionManager.startListeningForTrigger() // Возвращаемся к ожиданию триггерного слова
+                    recognitionManager.startListeningForTrigger()
                 }
             }
 
             override fun onError(utteranceId: String?) {
                 runOnUiThread {
-                    recognitionManager.startListeningForTrigger() // Возвращаемся к ожиданию триггерного слова
+                    recognitionManager.startListeningForTrigger()
                 }
             }
         })
