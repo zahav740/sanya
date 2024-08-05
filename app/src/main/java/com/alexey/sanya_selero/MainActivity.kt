@@ -130,7 +130,9 @@ class MainActivity : AppCompatActivity(), SRecognitionManager.RecognitionCallbac
 
     private fun handleServerError(e: Exception) {
         Log.e("MainActivity", "Error sending JSON to server", e)
-        Toast.makeText(this, "Ошибка отправки на сервер: ${e.message}", Toast.LENGTH_SHORT).show()
+        runOnUiThread {
+            Toast.makeText(this, "Ошибка отправки на сервер: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun playResponse(responseText: String) {

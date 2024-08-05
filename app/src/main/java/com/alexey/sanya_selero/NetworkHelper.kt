@@ -8,11 +8,16 @@ import org.json.JSONException
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
 class NetworkHelper(private val serverUrl: String) {
 
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS) // Время ожидания подключения
+        .writeTimeout(30, TimeUnit.SECONDS) // Время ожидания отправки данных
+        .readTimeout(30, TimeUnit.SECONDS) // Время ожидания ответа
+        .build()
 
     fun sendJsonToServer(jsonFilePath: File, onResponse: (String) -> Unit, onError: (Exception) -> Unit) {
         thread {
