@@ -28,11 +28,8 @@ class NetworkHelper(private val serverUrl: String) {
                     .post(body)
                     .build()
 
-                Log.d("NetworkHelper", "Sending JSON to server: ${jsonFilePath.readText()}")
-
                 client.newCall(request).enqueue(object : Callback {
                     override fun onFailure(call: Call, e: IOException) {
-                        Log.e("NetworkHelper", "Error sending JSON to server", e)
                         onError(e)
                     }
 
@@ -40,29 +37,14 @@ class NetworkHelper(private val serverUrl: String) {
                         response.use {
                             if (response.isSuccessful) {
                                 val responseBody = response.body?.string()
-                                if (responseBody.isNullOrEmpty()) {
-                                    Log.e("NetworkHelper", "Empty response body")
-                                    onError(IOException("Empty response body"))
-                                    return
-                                }
-                                try {
-                                    val responseJson = JSONObject(responseBody)
-                                    val responseText = responseJson.optString("response", "Нет ответа")
-                                    Log.d("NetworkHelper", "Received response from server: $responseText")
-                                    onResponse(responseText)
-                                } catch (e: JSONException) {
-                                    Log.e("NetworkHelper", "JSON parsing error", e)
-                                    onError(e)
-                                }
+                                onResponse(responseBody ?: "Empty response")
                             } else {
-                                Log.e("NetworkHelper", "Server error: ${response.code}")
-                                onError(IOException("Server error: ${response.code}"))
+                                onError(IOException("Unexpected response code ${response.code}"))
                             }
                         }
                     }
                 })
             } catch (e: Exception) {
-                Log.e("NetworkHelper", "Error sending JSON to server", e)
                 onError(e)
             }
         }

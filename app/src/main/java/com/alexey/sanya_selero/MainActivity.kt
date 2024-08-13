@@ -101,6 +101,11 @@ class MainActivity : AppCompatActivity(), SRecognitionManager.RecognitionCallbac
         if (text.isNotBlank()) {
             thread {
                 try {
+                    if (!jsonFilePath.exists()) {
+                        jsonFilePath.createNewFile()
+                        Log.d("JsonHelper", "Created new JSON file: ${jsonFilePath.absolutePath}")
+                    }
+
                     val json = JSONObject().apply {
                         put("text", text)
                         put("source", "smartphone")
@@ -117,6 +122,7 @@ class MainActivity : AppCompatActivity(), SRecognitionManager.RecognitionCallbac
             Log.d("JsonHelper", "Empty text, not saving to JSON")
         }
     }
+
 
     private fun handleServerResponse(responseText: String) {
         Log.d("MainActivity", "Received response from server: $responseText")
