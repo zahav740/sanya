@@ -16,10 +16,10 @@ import java.util.TimerTask
 class SRecognitionManager(private val context: Context, private val listener: RecognitionCallback) {
 
     private val speechRecognizer: SpeechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
-    private var isListening: Boolean = false // Определяет, активно ли распознавание речи
-    private val silenceTimeout: Long = 2000 // Время тишины для определения окончания фразы (в миллисекундах)
-    private var silenceTimer: Timer? = null // Таймер для отслеживания тишины
-    private val handler = Handler(Looper.getMainLooper()) // Handler для выполнения кода в главном потоке
+    private var isListening: Boolean = false
+    private val silenceTimeout: Long = 2000
+    private var silenceTimer: Timer? = null
+    private val handler = Handler(Looper.getMainLooper())
 
     init {
         speechRecognizer.setRecognitionListener(object : RecognitionListener {
@@ -31,7 +31,7 @@ class SRecognitionManager(private val context: Context, private val listener: Re
             override fun onBeginningOfSpeech() {
                 Log.d("SpeechRecognition", "Beginning of speech")
                 listener.onBeginningOfSpeech()
-                resetSilenceTimer() // Сбрасываем таймер тишины в начале речи
+                resetSilenceTimer()
             }
 
             override fun onRmsChanged(rmsdB: Float) {}
@@ -48,18 +48,14 @@ class SRecognitionManager(private val context: Context, private val listener: Re
             override fun onError(error: Int) {
                 Log.e("SpeechRecognition", "Speech recognition error: $error")
                 listener.onError(error)
-                // Обработка ошибок и переход в режим ожидания триггерного слова
                 when (error) {
                     SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> {
-                        // Тишина - вернуться к триггерному слову
                         startListeningForTrigger()
                     }
                     SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> {
-                        // Нет совпадений или служба занята - попробуем снова через небольшую задержку
                         handler.postDelayed({ startListeningForTrigger() }, 1000)
                     }
                     SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> {
-                        // Ошибки сети - показ уведомления
                         listener.onNetworkError()
                     }
                 }
@@ -70,7 +66,7 @@ class SRecognitionManager(private val context: Context, private val listener: Re
                 matches?.let {
                     val fullText = it.joinToString(" ")
                     listener.onResults(fullText)
-                    resetSilenceTimer() // Сбрасываем таймер тишины при получении результатов
+                    resetSilenceTimer()
                 }
             }
 
@@ -78,7 +74,7 @@ class SRecognitionManager(private val context: Context, private val listener: Re
                 val partial = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 partial?.let {
                     listener.onPartialResults(it.joinToString(" "))
-                    resetSilenceTimer() // Сбрасываем таймер тишины при получении промежуточных результатов
+                    resetSilenceTimer()
                 }
             }
 
@@ -135,7 +131,7 @@ class SRecognitionManager(private val context: Context, private val listener: Re
                 override fun run() {
                     handler.post {
                         stopListening()
-                        listener.onResults("") // Отправляем пустую строку, чтобы запустить отправку JSON на сервер
+                        listener.onResults("")
                     }
                 }
             }, silenceTimeout)

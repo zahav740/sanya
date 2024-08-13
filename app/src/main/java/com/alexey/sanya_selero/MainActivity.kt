@@ -14,7 +14,6 @@ import org.json.JSONObject
 import java.io.File
 import java.io.FileWriter
 import java.io.IOException
-import java.util.Locale
 import kotlin.concurrent.thread
 
 class MainActivity : AppCompatActivity(), SRecognitionManager.RecognitionCallback {
@@ -23,7 +22,7 @@ class MainActivity : AppCompatActivity(), SRecognitionManager.RecognitionCallbac
     private lateinit var recognitionManager: SRecognitionManager
     private lateinit var jsonFilePath: File
     private lateinit var voiceController: VoiceController
-    private val serverUrl = "http://192.168.1.156:3000/processVoice"
+    private val serverUrl = "https://your-secure-server.com/processVoice" // Используем HTTPS
     private val networkHelper = NetworkHelper(serverUrl)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -33,7 +32,7 @@ class MainActivity : AppCompatActivity(), SRecognitionManager.RecognitionCallbac
         transcriptionTextView = findViewById(R.id.transcriptionTextView)
         recognitionManager = SRecognitionManager(this, this)
 
-        // Инициализация пути к файлу в onCreate()
+        // Используем относительный путь для хранения файла JSON
         jsonFilePath = File(getExternalFilesDir(null), "text.json")
         Log.d("MainActivity", "JSON file path: ${jsonFilePath.absolutePath}")
 
@@ -103,8 +102,8 @@ class MainActivity : AppCompatActivity(), SRecognitionManager.RecognitionCallbac
             thread {
                 try {
                     val json = JSONObject().apply {
-                        put("text", text) // Убедитесь, что структура соответствует ожиданиям сервера
-                        put("source", "smartphone") // Добавляем источник, если это требуется сервером
+                        put("text", text)
+                        put("source", "smartphone")
                     }
                     FileWriter(jsonFilePath).use { it.write(json.toString()) }
                     Log.d("JsonHelper", "Saved to JSON: ${json.toString()}")

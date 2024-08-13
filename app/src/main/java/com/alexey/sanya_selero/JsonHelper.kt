@@ -13,10 +13,8 @@ class JsonHelper(private val jsonFilePath: File) {
         thread {
             try {
                 val json = try {
-                    // Попытка прочитать существующий JSON
                     JSONObject(jsonFilePath.readText())
                 } catch (e: Exception) {
-                    // Если файл пуст или некорректный, создаем новый JSONObject
                     JSONObject()
                 }
                 val currentText = json.optString("text", "")

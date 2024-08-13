@@ -16,14 +16,12 @@ class VoiceController(private val context: Context) : TextToSpeech.OnInitListene
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
-            // Устанавливаем язык синтезатора речи
-            val result = textToSpeech?.setLanguage(Locale("ru")) // Измените на нужный язык, например, Locale("ru") для русского
+            val result = textToSpeech?.setLanguage(Locale("ru"))
 
             if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
                 Log.e("VoiceController", "Язык не поддерживается")
             } else {
                 isInitialized = true
-                // Настройка голоса после успешной инициализации
                 setYouthfulVoice()
             }
         } else {
@@ -32,21 +30,17 @@ class VoiceController(private val context: Context) : TextToSpeech.OnInitListene
     }
 
     fun setVoicePitch(pitch: Float) {
-        // Устанавливаем высоту голоса
         textToSpeech?.setPitch(pitch)
     }
 
     fun setVoiceSpeed(speed: Float) {
-        // Устанавливаем скорость речи
         textToSpeech?.setSpeechRate(speed)
     }
 
     private fun setYouthfulVoice() {
-        // Получаем доступные голоса
         val availableVoices = textToSpeech?.voices
         val youthfulVoice = availableVoices?.firstOrNull { voice ->
-            // Ищем голос, который имеет молодое звучание
-            voice.name.contains("ru-ru-x-iog-network") // Пример имени юношеского голоса
+            voice.name.contains("ru-ru-x-iog-network")
         }
 
         if (youthfulVoice != null) {

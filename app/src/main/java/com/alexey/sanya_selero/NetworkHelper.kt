@@ -14,9 +14,9 @@ import kotlin.concurrent.thread
 class NetworkHelper(private val serverUrl: String) {
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS) // Время ожидания подключения
-        .writeTimeout(30, TimeUnit.SECONDS) // Время ожидания отправки данных
-        .readTimeout(30, TimeUnit.SECONDS) // Время ожидания ответа
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
     fun sendJsonToServer(jsonFilePath: File, onResponse: (String) -> Unit, onError: (Exception) -> Unit) {
